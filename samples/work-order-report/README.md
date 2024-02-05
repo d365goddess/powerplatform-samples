@@ -1,15 +1,5 @@
 # Work Order Report
 
-<!--
-This is how you want the sample to appear in the samples browser.
-When naming your sample, try to give it a friendly name that describes what it does. Avoid using terms like `Power Apps` and `Power Automate` -- because that's what all the samples in this repo is all about.
-GOOD 👍:
-  Kitten Videos
-BAD 👎:
-  power-apps-kittenvideos
-  Kitten Videos App for Power Platform using Creator Kit
--->
-
 ## Summary
 
 Short summary on functionality and used technologies.
