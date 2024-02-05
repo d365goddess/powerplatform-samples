@@ -1,0 +1,568 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "new_sharedcommondataserviceforapps_22e73"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      },
+      "shared_wordonlinebusiness": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "rac_sharedwordonlinebusiness_932f3"
+        },
+        "api": {
+          "name": "shared_wordonlinebusiness"
+        }
+      },
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "rac_sharedsharepointonline_8145f"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "rac_sharedoffice365_e4ae1"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_sharepointonline_1": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "rac_sharedsharepointonline_8145f"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "When_a_row_is_added,_modified_or_deleted": {
+          "metadata": {
+            "operationMetadataId": "a32999a3-feb0-478a-a697-c81ad775b015"
+          },
+          "type": "OpenApiConnectionWebhook",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "SubscribeWebhookTrigger",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "subscriptionRequest/message": 3,
+              "subscriptionRequest/entityname": "msdyn_workorder",
+              "subscriptionRequest/scope": 4,
+              "subscriptionRequest/filteringattributes": "msdyn_systemstatus",
+              "subscriptionRequest/filterexpression": "msdyn_systemstatus eq 690970003"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Get_a_row_by_ID_-_Account": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "c57bd58a-9c34-4d7a-a12a-8c66cd8d68ff"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "accounts",
+              "recordId": "@triggerOutputs()?['body/_msdyn_billingaccount_value']",
+              "$select": "name,address1_composite,telephone1"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Get_a_row_by_ID_-_Contact": {
+          "runAfter": {
+            "Get_a_row_by_ID_-_Account": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "3ab6e9c2-ccba-490d-82e4-58f8ed989cae"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "contacts",
+              "recordId": "@triggerOutputs()?['body/_msdyn_reportedbycontact_value']",
+              "$select": "fullname,emailaddress1"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "List_rows_products": {
+          "runAfter": {
+            "Get_a_row_by_ID_-_Contact": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "8bf957f5-7aa3-4e15-b97e-697755e71b7d"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "msdyn_workorderproducts",
+              "$filter": "msdyn_linestatus eq 690970001 and _msdyn_workorder_value eq @{triggerOutputs()?['body/msdyn_workorderid']}"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Initialize_variable_products": {
+          "runAfter": {
+            "List_rows_products": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "1d1934d6-5267-4651-abaa-7c3143aa4a48"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "products",
+                "type": "array"
+              }
+            ]
+          }
+        },
+        "Apply_to_each-products": {
+          "foreach": "@outputs('List_rows_products')?['body/value']",
+          "actions": {
+            "Append_to_array_variable": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "4169ded2-370c-44eb-a73d-f07014547498"
+              },
+              "type": "AppendToArrayVariable",
+              "inputs": {
+                "name": "products",
+                "value": {
+                  "ProductQTY": "@items('Apply_to_each-products')?['msdyn_qtytobill']",
+                  "ProductName": "@items('Apply_to_each-products')?['msdyn_name']",
+                  "ProdAmount": "@items('Apply_to_each-products')?['msdyn_totalamount']"
+                }
+              }
+            }
+          },
+          "runAfter": {
+            "Initialize_variable_products": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "3f9dbb9f-28a1-48e1-beb2-ab22ecded809"
+          },
+          "type": "Foreach"
+        },
+        "List_rows_services": {
+          "runAfter": {
+            "Apply_to_each-products": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "38d852a0-c597-4f98-bdac-a60fcfc21441"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "ListRecords",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "entityName": "msdyn_workorderservices",
+              "$filter": "msdyn_linestatus eq 690970001 and _msdyn_workorder_value eq  @{triggerOutputs()?['body/msdyn_workorderid']}"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Initialize_variable_services": {
+          "runAfter": {
+            "List_rows_services": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "3cca61f8-3e80-4bcc-881f-e68268560e46"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "services",
+                "type": "array"
+              }
+            ]
+          }
+        },
+        "Initialize_variable_duration_to_bill": {
+          "runAfter": {
+            "Initialize_variable_services": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "43732ea2-a72c-4b68-a782-2f5d1b3e47f9"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "duration to bill",
+                "type": "integer"
+              }
+            ]
+          }
+        },
+        "Apply_to_each": {
+          "foreach": "@outputs('List_rows_services')?['body/value']",
+          "actions": {
+            "Compose_DTB": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "509d8710-8e4c-4db7-8055-668a036fb065"
+              },
+              "type": "Compose",
+              "inputs": "@items('Apply_to_each')?['msdyn_durationtobill']"
+            },
+            "Compose_DTB_Integer": {
+              "runAfter": {
+                "Compose_DTB": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "580baa80-3c15-41a9-a612-b6a829d2f99b"
+              },
+              "type": "Compose",
+              "inputs": "@int(outputs('Compose_DTB'))"
+            },
+            "Set_variable_DTB_Integer_Value": {
+              "runAfter": {
+                "Compose_DTB_Integer": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "abbd9366-6da7-4de3-a576-39d09d1bff11"
+              },
+              "type": "SetVariable",
+              "inputs": {
+                "name": "duration to bill",
+                "value": "@outputs('Compose_DTB_Integer')"
+              }
+            },
+            "Compose_DTB_to_Hours": {
+              "runAfter": {
+                "Set_variable_DTB_Integer_Value": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "8682d5b7-86ac-4c2a-9f74-95014a0005ee"
+              },
+              "type": "Compose",
+              "inputs": "@div(variables('duration to bill'),60)"
+            },
+            "Append_to_array_services": {
+              "runAfter": {
+                "Compose_DTB_to_Hours": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "1b8c0432-8904-42df-8c2f-bdf70a935f1b"
+              },
+              "type": "AppendToArrayVariable",
+              "inputs": {
+                "name": "services",
+                "value": {
+                  "ServiceDuration": "@outputs('Compose_DTB_to_Hours')",
+                  "Servicename": "@items('Apply_to_each')?['msdyn_name']",
+                  "ServiceAmount": "@items('Apply_to_each')?['msdyn_totalamount']"
+                }
+              }
+            }
+          },
+          "runAfter": {
+            "Initialize_variable_duration_to_bill": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "8254c15a-7e36-4fb3-abda-9d6b4acb79cd"
+          },
+          "type": "Foreach"
+        },
+        "Populate_a_Microsoft_Word_template": {
+          "runAfter": {
+            "Apply_to_each": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "01PH2RMQI54QNZA5FTTZEL42PQMGA7NBNB": "/Templates/WORK_PERFORMED_Final.docx",
+            "operationMetadataId": "28d96081-5ad2-4890-81a3-cd8c14a12054",
+            "01PH2RMQKERUZ2PWONA5CYSJZFNFOBWPH7": "/Templates/WORK_PERFORMED_Final.docx"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_wordonlinebusiness",
+              "operationId": "CreateFileItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_wordonlinebusiness"
+            },
+            "parameters": {
+              "source": "groups/1d35806d-fd26-4d51-8802-e9a0f2b7233c",
+              "drive": "b!OAY0pCTna0G-aAqPyH3P1nhgAGRzlO5MpyS0QKd6ILMnG5yB8yqeRrw59FbH2VhM",
+              "file": "01PH2RMQKERUZ2PWONA5CYSJZFNFOBWPH7",
+              "dynamicFileSchema/62615191": "Dian Taylor",
+              "dynamicFileSchema/1973939125": "@outputs('Get_a_row_by_ID_-_Account')?['body/address1_composite']",
+              "dynamicFileSchema/2015413707": "@variables('products')",
+              "dynamicFileSchema/-916012721": "@outputs('Get_a_row_by_ID_-_Contact')?['body/fullname']",
+              "dynamicFileSchema/-1084751006": "@outputs('Get_a_row_by_ID_-_Account')?['body/name']",
+              "dynamicFileSchema/-1770001347": "@outputs('Get_a_row_by_ID_-_Account')?['body/telephone1']",
+              "dynamicFileSchema/-413162660": "@triggerOutputs()?['body/msdyn_name']",
+              "dynamicFileSchema/-1200157278": "@variables('services')",
+              "dynamicFileSchema/-1768305944": "@triggerOutputs()?['body/msdyn_totalamount']"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Create_file_Word": {
+          "runAfter": {
+            "Populate_a_Microsoft_Word_template": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "81192a6f-0c45-45d3-a133-573ea2f92660"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "CreateFile",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://rsmd365rec.sharepoint.com/sites/DianD365CEDocuments",
+              "folderPath": "/Shared Documents",
+              "name": "Work Order @{triggerOutputs()?['body/msdyn_name']}.docx",
+              "body": "@outputs('Populate_a_Microsoft_Word_template')?['body']"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runtimeConfiguration": {
+            "contentTransfer": {
+              "transferMode": "Chunked"
+            }
+          }
+        },
+        "Convert_Word_Document_to_PDF": {
+          "runAfter": {
+            "Create_file_Word": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "aa063563-118d-4593-802a-4db6dcd9e224"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_wordonlinebusiness",
+              "operationId": "GetFilePDF",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_wordonlinebusiness"
+            },
+            "parameters": {
+              "source": "groups/1d35806d-fd26-4d51-8802-e9a0f2b7233c",
+              "drive": "b!OAY0pCTna0G-aAqPyH3P1nhgAGRzlO5MpyS0QKd6ILMnG5yB8yqeRrw59FbH2VhM",
+              "file": "@outputs('Create_file_Word')?['body/Name']"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Create_file_PDF": {
+          "runAfter": {
+            "Convert_Word_Document_to_PDF": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "1b18c188-ac3e-4ade-90e8-ef19122be7cd"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "CreateFile",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://rsmd365rec.sharepoint.com/sites/DianD365CEDocuments",
+              "folderPath": "/Shared Documents",
+              "name": "@{outputs('Create_file_Word')?['body/Name']}-PDF.pdf",
+              "body": "@outputs('Convert_Word_Document_to_PDF')?['body']"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runtimeConfiguration": {
+            "contentTransfer": {
+              "transferMode": "Chunked"
+            }
+          }
+        },
+        "Send_an_email_(V2)": {
+          "runAfter": {
+            "Get_file_content": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "d8b5ac33-a09d-4cca-9a24-08a6b1438d47"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_office365",
+              "operationId": "SendEmailV2",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+            },
+            "parameters": {
+              "emailMessage/To": "dian.taylor@rsmus.com; dian.taylor@rsmd365rec.onmicrosoft.com",
+              "emailMessage/Subject": "Work Order @{triggerOutputs()?['body/msdyn_name']}",
+              "emailMessage/Body": "<p>Document attached</p>",
+              "emailMessage/Attachments": [
+                {
+                  "Name": "@outputs('Create_file_PDF')?['body/Name']",
+                  "ContentBytes": "@outputs('Get_file_content')?['body']"
+                }
+              ]
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Get_file_content": {
+          "runAfter": {
+            "Create_file_PDF": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "773ace5a-0bbb-4364-b16a-92979a169dbf"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetFileContent",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://rsmd365rec.sharepoint.com/sites/DianD365CEDocuments",
+              "id": "@outputs('Create_file_PDF')?['body/Id']",
+              "inferContentType": true
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Delete_file_-_Word": {
+          "runAfter": {
+            "Send_an_email_(V2)": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "ed7e31e1-3718-4c0e-bccc-8d338c580cb3"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline_1",
+              "operationId": "DeleteFile",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://rsmd365rec.sharepoint.com/sites/DianD365CEDocuments",
+              "id": "@outputs('Create_file_Word')?['body/Id']"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Delete_file_-_PDF": {
+          "runAfter": {
+            "Delete_file_-_Word": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "1399b6e8-e3cd-47dc-94ed-96a0ffbeed8c"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline_1",
+              "operationId": "DeleteFile",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://rsmd365rec.sharepoint.com/sites/DianD365CEDocuments",
+              "id": "@outputs('Create_file_PDF')?['body/Id']"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": ""
+  },
+  "schemaVersion": "1.0.0.0"
+}
